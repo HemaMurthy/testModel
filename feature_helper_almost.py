@@ -10,7 +10,23 @@ import os
 from datetime import datetime, timedelta
 import time
 import asset_report
+import math
 
+def dead_assets(products,notes):
+    value=0
+    plist=products['last_inactive_date']
+    deadlog=[]
+    alivelog=[]
+    for x in plist:
+        try:
+            if math.isnan(x)==True:
+                deadlog.append(products.iloc[value])
+        except Exception as e:
+            alivelog.append(products.iloc[value])
+        value+=1
+    asset_report.write_into_report("\n\nAssets without last_inactive_date or Dead Assets: ",len(deadlog))
+    # for feach dead asset, check it lifetime
+                
 
 def build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, productError, listOfCombinations, firmware_history):
     try:
