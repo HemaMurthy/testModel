@@ -40,11 +40,12 @@ error_log.insert(1,'reason_id',1,True)
 daily_prod=panda.DataFrame(life_events[(life_events.life_event_code==3) & (life_events.life_event_value==1)])
 man_prod=panda.DataFrame(life_events.customer_asset_identifier[(life_events.life_event_code==3) & (life_events.life_event_value==2)])
 log2_list=list(set(man_prod['customer_asset_identifier'])-set(daily_prod['customer_asset_identifier']))
-
-man_prod.insert(1,'reason_id',2,True)
-error_log=error_log.append(man_prod)
-
 log1_list=list(set(daily_prod['customer_asset_identifier'])-set(man_prod['customer_asset_identifier']))
+manual_df=panda.DataFrame(log2_list)
+manual_df.columns=['customer_asset_identifier']
+manual_df.insert(1,'reason_id',2,True)
+error_log=error_log.append(manual_df)
+
 report.write_into_report('\n\nAssets with only log status 1, ie, only daily entries: ',len(log1_list))
 report.write_into_report('\nAssets with only log status 2, ie, only Manual entries: ',len(log2_list))
 
