@@ -14,6 +14,16 @@ products,notes,product_status,asset_features,condition_events,firmware_history,l
 
 report.create_report()
 report.write_into_report('\nTotal assets: ',len(products))
+dates=[]
+for x in notes['date']:
+        dates.append(datetime.strptime(x,'%Y-%m-%d'))
+dates.pop(0)
+min_date=min(dates)
+max_date=max(dates)
+now = dt.datetime.now()
+report.write_into_report('\nReport date: ',now)
+report.write_into_report('\n\nDaily Work gathered from: ',min_date)
+report.write_into_report('\nLast Daily work collected on:',max_date)
          
 #reason:1 active assets
 active_assets = products.customer_asset_identifier[(products.active_status == 'Active')]
@@ -77,8 +87,7 @@ error_log=error_log.append(no_notes_list)
 
 
 #reason: 5 insatll date in the future
-now = dt.datetime.now().date()
-install_date_error=products.customer_asset_identifier[products.installed_date>now]
+install_date_error=products.customer_asset_identifier[products.installed_date>now.date()]
 report.write_into_report('\n\nAssets with install dates in the future: ',len(install_date_error))
 install_date_error=panda.DataFrame(install_date_error)
 install_date_error.insert(1,'reason_id',5,True)
@@ -87,14 +96,15 @@ error_log=error_log.append(install_date_error)
 #validate using a random number
 random_prod=random.choice(products.customer_asset_identifier)
 report.write_into_report('\n\nRandom Product id: ',random_prod)
-if error_log.loc[error_log['customer_asset_identifier']==random_prod]:
+try:
+        error_log.loc[error_log['customer_asset_identifier']==random_prod]
         print '\nProduct found in error log!\nError log: \n'
         print error_log.loc[error_log['customer_asset_identifier']==random_prod]
-else:
-        print 'Product chosen for feature engineering!'
+except Exception as e:
+        print '\nProduct chosen for feature engineering!'
 report.write_into_report('\nRandom Product Information:',products.loc[products.customer_asset_identifier==random_prod])
 report.write_into_report('\n\nRandom Product Life Events:',life_events.loc[life_events.customer_asset_identifier==random_prod])
 
 df=panda.DataFrame(error_log)
-df.to_csv('error_log.csv',index=False)
+df.to_csv('error_log.csv',index=True, index_label=['customer_asset_identifier','Reason Id']))
 
