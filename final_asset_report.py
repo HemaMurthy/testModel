@@ -22,8 +22,8 @@ min_date=min(dates)
 max_date=max(dates)
 now = dt.datetime.now()
 report.write_into_report('\nReport date: ',now)
-report.write_into_report('\n\nDaily Work gathered from: ',min_date)
-report.write_into_report('\nLast Daily work collected on:',max_date)
+report.write_into_report('\n\nDaily Work gathered from: ',min_date.date())
+report.write_into_report('\nLast Daily work collected on:',now.date())
          
 #reason:1 active assets
 active_assets = products.customer_asset_identifier[(products.active_status == 'Active')]
@@ -96,15 +96,17 @@ error_log=error_log.append(install_date_error)
 #validate using a random number
 random_prod=random.choice(products.customer_asset_identifier)
 report.write_into_report('\n\nRandom Product id: ',random_prod)
-try:
-        error_log.loc[error_log['customer_asset_identifier']==random_prod]
-        print '\nProduct found in error log!\nError log: \n'
-        print error_log.loc[error_log['customer_asset_identifier']==random_prod]
-except Exception as e:
-        print '\nProduct chosen for feature engineering!'
-report.write_into_report('\nRandom Product Information:',products.loc[products.customer_asset_identifier==random_prod])
-report.write_into_report('\n\nRandom Product Life Events:',life_events.loc[life_events.customer_asset_identifier==random_prod])
+at_focus=error_log.loc[error_log['customer_asset_identifier']==random_prod]
+if at_focus.empty()==True:
+        report.write_me('\nProduct chosen for feature engineering!')
+else:
+        report.write_me('\nProduct found in error log!\nError log: \n')
+        report.write_me(error_log.loc[error_log['customer_asset_identifier']==random_prod])
+report.write_me('\nRandom Product Information:')
+report.write_me(products.loc[products.customer_asset_identifier==random_prod])
+report.write_me('\n\nRandom Product Life Events:')
+report.write_me(life_events.loc[life_events.customer_asset_identifier==random_prod])
 
 df=panda.DataFrame(error_log)
-df.to_csv('error_log.csv',index=True, index_label=['customer_asset_identifier','Reason Id']))
+df.to_csv('error_log.csv',index=True, index_label=['customer_asset_identifier','Reason Id'])
 
