@@ -74,7 +74,8 @@ error_log=error_log.append(no_notes)
 #reason: 4 no notes summary for atleast 60 days
 no_notes_list=[]
 notes_60=[]
-for product in products.customer_asset_identifier:
+avail_notes=notes['customer_asset_identifier'].drop_duplicates()
+for product in avail_notes:
           asset_notes=notes[(notes.customer_asset_identifier==product)]
           if( len(asset_notes)>60):
             notes_60.append(product)
@@ -93,12 +94,15 @@ report.write_into_report('\n\nAssets with install dates in the future: ',len(ins
 install_date_error=panda.DataFrame(install_date_error)
 install_date_error.insert(1,'reason_id',5,True)
 error_log=error_log.append(install_date_error)
+print 'Completed processing all filters'
 
 #validate using a random number
+print 'validating with a random number'
 random_prod=random.choice(products.customer_asset_identifier)
+print 'using random customer_asset_identifier number: ',random_prod
 report.write_into_report('\n\nRandom Product id: ',random_prod)
 at_focus=error_log.loc[error_log['customer_asset_identifier']==random_prod]
-if at_focus.empty==True:
+if at_focus.empty:
         report.write_me('\nProduct chosen for feature engineering!')
 else:
         report.write_me('\nProduct found in error log!\nError log: \n')
@@ -108,6 +112,21 @@ report.write_me(products.loc[products.customer_asset_identifier==random_prod])
 report.write_me('\n\nRandom Product Life Events:')
 report.write_me(life_events.loc[life_events.customer_asset_identifier==random_prod])
 
+#write error_log into .csv file
+print 'creating error_log csv file'
 df=panda.DataFrame(error_log)
-df.to_csv('error_log.csv',index=True, index_label=['customer_asset_identifier','Reason Id'])
+df.to_csv('error_log.csv',index=False)
 
+#get valuable products
+error_log_list=error_log.customer_asset_identifier
+prods=products.customer_asset_identifier
+valid=list(set(prods)-set(error_log_list))
+print len(valid)
+
+print 'assessing valid products'
+valid=panda.DataFrame(valid)
+print valid.head(6)
+valid.to_csv('valid_assets.csv',index=False)
+
+
+print 'All done'
