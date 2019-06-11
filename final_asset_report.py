@@ -97,7 +97,7 @@ error_log=error_log.append(install_date_error)
 random_prod=random.choice(products.customer_asset_identifier)
 report.write_into_report('\n\nRandom Product id: ',random_prod)
 at_focus=error_log.loc[error_log['customer_asset_identifier']==random_prod]
-if at_focus.empty()==True:
+if at_focus.empty==True:
         report.write_me('\nProduct chosen for feature engineering!')
 else:
         report.write_me('\nProduct found in error log!\nError log: \n')
