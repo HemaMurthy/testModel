@@ -94,10 +94,10 @@ report.write_into_report('\n\nAssets with install dates in the future: ',len(ins
 install_date_error=panda.DataFrame(install_date_error)
 install_date_error.insert(1,'reason_id',5,True)
 error_log=error_log.append(install_date_error)
-print 'Completed processing all filters'
+print '..Completed processing all filters..'
 
 #validate using a random number
-print 'validating with a random number'
+print '..Validating with a random number..'
 random_prod=random.choice(products.customer_asset_identifier)
 print 'using random customer_asset_identifier number: ',random_prod
 report.write_into_report('\n\nRandom Product id: ',random_prod)
@@ -118,15 +118,15 @@ df=panda.DataFrame(error_log)
 df.to_csv('error_log.csv',index=False)
 
 #get valuable products
-error_log_list=error_log.customer_asset_identifier
+error_log_list=error_log['customer_asset_identifier'].drop_duplicates()
+report.write_into_report('\n\nAssets in error_log: ',len(error_log_list))
 prods=products.customer_asset_identifier
 valid=list(set(prods)-set(error_log_list))
-print len(valid)
 
 print 'assessing valid products'
 valid=panda.DataFrame(valid)
-print valid.head(6)
+report.write_into_report('\nAssets passing all filters: ',len(valid))
 valid.to_csv('valid_assets.csv',index=False)
 
 
-print 'All done'
+print 'All done!'
