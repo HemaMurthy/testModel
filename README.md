@@ -6,7 +6,7 @@ functions test ground for the new ARCA model
       3: filter assets using reasons_mapping [DONE >>> final_asset_report.py]
       4: send report [DONE >>> sendmail.py]
       5: build feature table
-          5.1: get filtered product_list
+          5.1: get filtered product_list [DONE]
           5.2: settle on feature_set
           5.3: fill up missig data
           5.4: map firmware history to products
