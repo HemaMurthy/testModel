@@ -44,19 +44,20 @@ error_log.insert(1,'reason_id',1,True)
 daily_prod=panda.DataFrame(life_events[(life_events.life_event_code==3) & (life_events.life_event_value==1)]).drop_duplicates()
 man_prod=panda.DataFrame(life_events.customer_asset_identifier[(life_events.life_event_code==3) & (life_events.life_event_value==2)]).drop_duplicates()
 log2_list=list(set(man_prod['customer_asset_identifier'])-set(daily_prod['customer_asset_identifier']))
-log1_list=list(set(daily_prod['customer_asset_identifier'])-set(man_prod['customer_asset_identifier']))
+daily_alone_list=list(set(daily_prod['customer_asset_identifier'])-set(man_prod['customer_asset_identifier']))
+daily_list=list(set(daily_prod['customer_asset_identifier'])&set(man_prod['customer_asset_identifier']))
 manual_df=panda.DataFrame(log2_list)
 manual_df.columns=['customer_asset_identifier']
 manual_df.insert(1,'reason_id',2,True)
 error_log=error_log.append(manual_df)
 
-report.write_into_report('\n\nAssets with only log status 1, ie, only daily entries: ',len(log1_list))
+report.write_into_report('\n\nAssets with only log status 1, ie, only daily entries: ',len(daily_alone_list))
 report.write_into_report('\nAssets with only log status 2, ie, only Manual entries: ',len(log2_list))
 report.write_into_report('\nAssets with log status 1: ',len(daily_prod))
 
 #reason:3 log status daily but no notes data for n=15 days
-no_notes_list=[]
 perfect_notes=[]
+no_notes_list=[]
 for product in products.customer_asset_identifier:
         product_work=panda.DataFrame(notes[(notes.customer_asset_identifier==product)])
         dates=[]
@@ -99,13 +100,14 @@ for product in avail_notes:
             no60_notes.append(product)
 report.write_into_report('\n\nAssets with work entries for atleast 60 days: ',len(notes_60))
 report.write_into_report('\nAssets without work entries for atleast 60 days: ',len(no60_notes))
-no_notes_list=panda.DataFrame(no60_notes)
-no_notes_list.columns=['customer_asset_identifier']
-no_notes_list.insert(1,'reason_id',4,True)
-error_log=error_log.append(no_notes_list)
+no60_notes_list=panda.DataFrame(no60_notes)
+no60_notes_list.columns=['customer_asset_identifier']
+no60_notes_list.insert(1,'reason_id',4,True)
+error_log=error_log.append(no60_notes_list)
 
 
 #reason: 5 insatll date in the future
+products.installed_date = panda.to_datetime(products.installed_date).dt.date
 install_date_error_list=products.customer_asset_identifier[products.installed_date>now.date()]
 report.write_into_report('\n\nAssets with install dates in the future: ',len(install_date_error_list))
 install_date_error=panda.DataFrame(install_date_error_list)
@@ -155,9 +157,6 @@ print 'All done!'
 
 def get_data():
         print 'Retriving data..'
-        return valid_list,error_log_list,install_date_error_list,no_notes,notes_60,no60_notes,no_notes_list,perfect_notes,daily_prod,man_prod,
-active_assets,inactive_list
-
-
+        return avail_notes,valid_list,error_log_list,list(install_date_error_list),notes_60,no60_notes,no_notes_list,perfect_notes,daily_alone_list,daily_list,log2_list
 
 
