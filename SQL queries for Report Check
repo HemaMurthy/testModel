@@ -1,0 +1,9 @@
+Total assets:
+select count(distinct customer_asset_identifier from ekryp_data_db_prod.asset_ib_info)
+
+Assets with notes:
+SELECT count(distinct customer_asset_identifier) FROM ekryp_data_db_prod.asset_daily_work
+where customer_asset_identifier
+in 
+(select customer_asset_identifier from ekryp_data_db_prod.asset_ib_info)
+
