@@ -7,3 +7,13 @@ where customer_asset_identifier
 in 
 (select customer_asset_identifier from ekryp_data_db_prod.asset_ib_info)
 
+Assets not Active or Inactive:
+SELECT * FROM ekryp_data_db_prod.asset_ib_info
+where active_status not in ('Active','Inactive')
+
+Assets with their log status:
+SELECT count(Distinct customer_asset_identifier) FROM ekryp_data_db_prod.asset_life_event
+where customer_asset_identifier in (select distinct customer_asset_identifier from ekryp_data_db_prod.asset_ib_info)
+and life_event_code=3 
+and life_event_description in ('Manually', 'Daily')
+
