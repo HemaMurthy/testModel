@@ -3,12 +3,12 @@ functions test ground for the new ARCA model
 
       1: Configure UI to get error_code_mapping from customer
       2: Gather data from ekryp_schema into ML_reference schema
-      3: filter assets using reasons_mapping [DONE >>> final_asset_report.py]
+      3: filter assets using reasons_mapping [DONE >>> final_asset_report.py -> run python test7.py]
       4: send report [DONE >>> sendmail.py]
       5: build feature table
-          5.1: get filtered product_list [DONE]
-          5.2: settle on feature_set
-          5.3: fill up missig data
+          5.1: get filtered product_list [DONE -> run python ogfeature_builder.py]
+          5.2: settle on feature_set [ to test try test9.py on alltestFacts-Data.csv']
+          5.3: fill up missig data [DONE]
           5.4: map firmware history to products
           5.5: find pm_dates and map notes/cumulative notes for those dates
           5.6: set daily_work timeframe, eg: 30 days or 1 week etc
