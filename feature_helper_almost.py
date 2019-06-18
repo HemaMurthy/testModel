@@ -11,21 +11,6 @@ from datetime import datetime, timedelta
 import time
 import asset_report
 import math
-
-def dead_assets(products,notes):
-    value=0
-    plist=products['last_inactive_date']
-    deadlog=[]
-    alivelog=[]
-    for x in plist:
-        try:
-            if math.isnan(x)==True:
-                deadlog.append(products.iloc[value])
-        except Exception as e:
-            alivelog.append(products.iloc[value])
-        value+=1
-    asset_report.write_into_report("\n\nAssets without last_inactive_date or Dead Assets: ",len(deadlog))
-    # for feach dead asset, check it lifetime
                 
 
 def build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, productError, listOfCombinations, firmware_history):
@@ -33,27 +18,39 @@ def build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, pro
         
         notes['date'] = panda.to_datetime(notes['date']).dt.date
         notes.set_index(['customer_asset_identifier', 'date'], drop=True, inplace=True)
-        notes_in_prod = notes.xs(product_id, level='customer_asset_identifier').working_units
-        notes_in_prod = notes_in_prod[~notes_in_prod.index.duplicated(keep='last')]
-        prod_install_date = products.asset_installed_date[products.asset_id == product_id].values[0]
+        
+        #get daily_work for that particular product_id
+        notes_in_prod = notes.xs(product_id, level='customer_asset_identifier').working_unit
+        
+        #remove duplicate work entries from the list
+        notes_in_prod = notes_in_prod[~notes_in_prod.index.duplicated(keep='last')] 
+        
+        #chooses the first install date available, without value[0] it will return a tuple
+        prod_install_date = products.installed_date[products.customer_asset_identifier == product_id].values[0]
 
+        #collects and sorts (in ascending) the date and firmware version of product
         firmwareHistoryFiltered = firmware_history[firmware_history.customer_asset_identifier == product_id][['firmware_version_id', 'created_date']]
         firmwareHistoryFiltered.created_date = panda.to_datetime(firmwareHistoryFiltered.created_date)
         firmwareHistoryFiltered.sort_values(['created_date'], inplace = True)
-        firmwareHistoryFiltered['created_date'] = panda.to_datetime(firmwareHistory.created_date).dt.date
+        firmwareHistoryFiltered['created_date'] = panda.to_datetime(firmware_history.created_date).dt.date
+        
+        #firmwareHistoryFiltered columns=['created_date','firmware_version_id']
         firmwareHistoryFiltered.set_index('created_date', drop=True, inplace=True)
-        # Removing duplicates and keeping the last firmware that was installed for that date
+        
+        #Removing duplicates and keeping the last firmware that was installed for that date
         firmwareHistoryFiltered = firmwareHistoryFiltered[~firmwareHistoryFiltered.index.duplicated(keep='last')]
-
+        
+        #productError is condition_events info
         errorCodes = productError[productError['customer_asset_identifier'] == product_id].copy()
         errorCodes.date = panda.to_datetime(errorCodes['date']).dt.date
 
         # define start date based on the install date
-        start_date = max(notes_in_prod.index.min().date(),
-                     prod_install_date)
+        start_date = max(notes_in_prod.index.min().date(),prod_install_date)
 
         # define end date to be the max_date until when the data is available
-        end_date = max_Date
+        end_date = max_Date #max_Date is todays date!
+        
+        #should be zero ideally
         days_since_install = (start_date - prod_install_date).days
 
         # Reindex to fill in for missing Dates
@@ -197,105 +194,6 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
     if iteration == total:
         sys.stdout.write('\n')
     sys.stdout.flush()
-
-def true_log_filter(life_events):
-        #to check for un-interrupted log status 2 for more than 15 days
-        life_events.sort_values(by='customer_asset_identifier')
-        product_id=life_events.customer_asset_identifier
-        value=0
-        log_list=[]
-        event_code=life_events.life_event_code
-        for x in event_code:
-                if x==3:
-                   log_list.append(product_id[value])
-                value+=1
-        #return lists of all life_event_code 3 for log status
-        #TODO: check if 15 day gap exists  
-        return log_list
-       
-def daily_notes_filter(products,notes):
-        print("Filter 3 \tChecking for assets without daily notes summary.....")
-        notes_list=notes['customer_asset_identifier']
-        products_list=products['customer_asset_identifier']
-        error_log=list(set(notes_list)-set(products_list))
-        asset_report.write_into_report("\n\nAssets without daily notes summary: ",len(error_log))
-        new_prods= set(notes_list)&set(products_list)
-        return new_prods
-
-def install_date_filter(products):
-        print("Filter 2 \tChecking for assets installed after 2010-01-01.....")
-        products_ids=products.customer_asset_identifier
-        dates=products.installed_date
-        value=0
-        error_log=[]
-        new_prods=[]
-        LimitDate=datetime(2010,01,01).date()
-        for x in dates:
-            if x> LimitDate:
-                new_prods.append(products_ids[value])
-            else:
-                error_log.append(products_ids[value])
-            value+=1
-        asset_report.write_into_report("\n\nAssets installed after 2010-01-01: ",len(new_prods))
-        asset_report.write_into_report("\nAssets installed before 2010-01-01: ",len(error_log))
-        #return asset_report.make_dataFrame(products,new_prods)
-        return new_prods
-
-def active_filter(products):
-        print("Filter 1 \tEvaluating active assets.....")
-        product_ids=products.customer_asset_identifier
-        status=products.active_status
-        value=0
-        error_log=[]
-        active_products=[]
-        asset_report.write_into_report("\nTotal assets: ",len(products))
-        for x in status:
-            if x=='Active':
-                active_products.append(product_ids[value])
-            else:
-                error_log.append(product_ids[value])
-            value+=1
-        #error_log contains product_ids of inactive assets 
-        asset_report.write_into_report("\nActive assets: ",len(product_ids)-len(error_log))
-        asset_report.write_into_report("\nInactive assets: ",len(error_log))
-        return active_products
-        #send error log to make csv
-
-def log_status_filter(life_events):
-        print("Filter 4 \tChecking for log status 1.....")
-        products_ids=life_events.customer_asset_identifier
-        life_code=life_events.life_event_code
-        life_value=life_events.life_event_value
-        value=0
-        new_prods=[]
-        error_log=[]
-        for x in products_ids:
-            if life_code[value]==3:
-                if life_value[value]==2:
-                        error_log.append(products_ids[value])
-                else:
-                        new_prods.append(products_ids[value])
-            value+=1
-        asset_report.write_into_report("\n\nAssets with log status 1 (daily): ",len(new_prods))
-        asset_report.write_into_report("\nAssets with log status 2 (manual): ",len(error_log))
-        #send error_log to make csv
-        return new_prods
-
-def filter(products,notes,life_events):
-   asset_report.create_report()
-   try:
-        active_products=active_filter(products)
-        installed_products=install_date_filter(products)
-        notes_product=daily_notes_filter(products,notes)
-        log_1_products=log_status_filter(life_events)
-        true_log_products=true_log_filter(life_events)
-        #log status=1 for more than 15 consecutive dates
-        #install date in the future
-        product_list=list(set(active_products)&set(installed_products)&set(notes_product)&set(log_1_products))
-        asset_report.write_into_report("\n\nValid assets: ",len(product_list))
-        return product_list
-   except Exception as e:
-        raise
 
 def read_from_csv_files():
    try:
