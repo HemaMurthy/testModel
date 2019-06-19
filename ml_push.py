@@ -35,7 +35,7 @@ DATADIR = '/home/hema_murthy/testModel/testDataSource' #change to the necessary 
 
 #alter this to match the table structure
 def getTableSchema(tableName, meta):
-    if tableName == service_request_history: #need to change it to ml-refernence tables
+    if tableName == 'service_request_history': #need to change it to ml-refernence tables
         return Table(tableName, meta,
                 Column('customer_asset_identifier',Integer, nullable=False),
                 Column('service_request_date',String(10), nullable=False),
