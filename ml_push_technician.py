@@ -53,21 +53,26 @@ def pushToSQL(tableSchema, df, tableName, engine, meta):
     df.to_sql(tableName, engine, if_exists= 'append', index=False)
 
 #load table info from ekryp_data_db_prod!!! i've already done that, and i have it on my GCP directory
-dummy=panda.read_csv(os.path.join(DATADIR,'service_request_record.csv'))
+sr=panda.read_csv(os.path.join(DATADIR,'service_order_record.csv'))
+products=panda.read_csv(os.path.join(DATADIR,'asset_ib_info.csv'))
+field_tech=panda.read_csv(os.path.join(DATADIR,'field_service_ops_activity_record.csv'))
+
+sr=sr.join(products,on='customer_asset_identifier',how='inner',lsuffix='customer_asset_identifier')
+sr=sr.join(field_service_ops_activity_record,on='field_technician',how='inner',lsuffix='field_rep')
 
 #alter this to fit the info in df to match the columns in table
 df = panda.DataFrame({
-    'customer_asset_identifier': dummy['customer_asset_identifier'],
-    'service_request_date': dummy['service_request_date'],
-    'incident_category':dummy['incident_category'],
-    'incident_status': dummy['status'],
     'ekryp_customer_id':1,
-    'Asset_serial_number':dummy['serial_number'],
-    'Priority': dummy['priority']
+    'customer_asset_identifier': sr['customer_asset_identifier'],
+    'asset_serial_number':sr['serial_number'],
+    'service_order_date': sr['date'],
+    'service_order_provider':sr['service_provider'],
+    'technician_id': sr['technician_id'], 
+    'technician_name': sr['service_rep']
 })
 
 #table you want to populate
-tablename='service_request_history'
+tablename='technician_history'
 
 sqlEngine, sqlMeta = getSQlEngine()
 tableSchema= getTableSchema(tablename,sqlMeta)
