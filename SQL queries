@@ -17,6 +17,6 @@ where customer_asset_identifier in (select distinct customer_asset_identifier fr
 and life_event_code=3 
 and life_event_description in ('Manually', 'Daily')
 
-field_reps not in service_order;
-SELECT * FROM ekryp_data_db_prod.service_order_record
-where service_rep not in (SELECT distinct field_technician FROM ekryp_data_db_prod.field_service_ops_activity_record)
+All field_service_id's in field ops present in service order!
+SELECT count(*) FROM ekryp_data_db_prod.service_order_record
+where id not in (SELECT distinct field_service_order_id FROM ekryp_data_db_prod.field_service_ops_activity_record)
