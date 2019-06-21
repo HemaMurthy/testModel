@@ -40,9 +40,10 @@ def getTableSchema(tableName, meta):
                 Column('customer_asset_identifier',Integer, nullable=False),
                 Column('asset_serial_number', String(15), nullable=False),
                 Column('serial_order_date',String(10), nullable=False),
-                Column('service_order_provider', Integer, nullable=False),
+                Column('service_provider', Integer, nullable=False),
                 Column('technician_id', Integer, nullable=False),
-                Column('technician_name', String(30), nullable=False)
+                Column('technician_name', String(30), nullable=False),
+                Column('technician_arrival_date',String(30),nullable=False)
         )
 
 def pushToSQL(tableSchema, df, tableName, engine, meta):
@@ -68,10 +69,10 @@ df = panda.DataFrame({
     'customer_asset_identifier': sr['customer_asset_identifier'],
     'asset_serial_number':sr['serial_number'],
     'serial_order_date': sr['service_order_created_on'],
-    'service_order_provider':sr['service_provider'],
+    'service_provider':sr['service_provider'],
     'technician_id':sr['field_technician_id'],
     'technician_name': sr['field_technician'],
-  #  'technician_arrival_date':sr['date_arrival']
+    'technician_arrival_date':sr['date_arrival']
 })
 df=df.astype({'technician_id':int})
 #table you want to populate
