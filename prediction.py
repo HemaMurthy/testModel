@@ -11,6 +11,7 @@ from sklearn.externals import joblib
 
 #For Classification models
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import ExtraTreesClassifier
 #from xgboost import XGBClassifier, XGBRegressor
 # Classification Metrics
 from sklearn.metrics import recall_score, precision_score, accuracy_score, confusion_matrix, roc_curve, auc
@@ -283,10 +284,14 @@ classificationData = dataReduced.drop(['day_to_failure'], 1)
 
 train, test = test_train_split(classificationData, trainMaxDate, testMaxDate)
 
+classificationModels = [  ('ExtraTreesClassifier(n_estimators=250,random_state=0,max_depth=7,class_weight=balanced,max_features=sqrt)',
+                           ExtraTreesClassifier(n_estimators=250,random_state=0,max_depth=7,class_weight=balanced,max_features=sqrt))]
+'''
 classificationModels = [
         ('RandomForestClassifier(n_estimators=100,max_depth=7,class_weight=balanced,max_features=sqrt)',
          RandomForestClassifier(n_estimators=100,max_depth=7,class_weight="balanced",max_features="sqrt"))
 ]
+'''
 ColsToDrop = [u'customer_asset_identifier', u'date', 'failure_event']
 results = []
 modelNames = []
