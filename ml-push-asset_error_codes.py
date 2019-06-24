@@ -51,8 +51,24 @@ def pushToSQL(tableSchema, df, tableName, engine, meta):
     meta.create_all(engine)
     df.to_sql(tableName, engine, if_exists= 'append', index=False)
 
+def createDF(new_df):
+    print 'Created new DataFrame.. ready to push into DB..'
+    #alter this to fit the info in df to match the columns in table
+    df = panda.DataFrame({
+        'ekryp_customer_id':1,
+        'customer_asset_identifier': new_df['customer_asset_identifier'],
+        'asset_serial_number':new_df['serial_number'],
+        'date': new_df['date'],
+        'code_id': new_df['code_id'], 
+        'value': new_df['value']
+    })
+    return df
+
+#table you want to populate
+asset_error_codes='asset_error_codes'
+
 #load table info from ekryp_data_db_prod!!! i've already done that, and i have it on my GCP directory
-events=panda.read_csv(os.path.join(DATADIR,'asset_condition_events.csv'))
+events=panda.read_csv(os.path.join(DATADIR,'asset_conditions_events.csv'))
 #change dtype of date and drop unnecesary columns
 events['date'] = panda.to_datetime(events['date']).dt.date
 events.drop(columns=['time','code_type','criticality' ,'description'],inplace=True)
@@ -60,14 +76,19 @@ events.drop(columns=['time','code_type','criticality' ,'description'],inplace=Tr
 #insert value column into events
 events.insert(4,'value',0)
 
-#create new df with columns as same as events
-new_df=panda.DataFrame(columns=events.columns)
 
 #get unique customer_asset_identifiers
-event_list=events['customer_asset_identifier'].drop_duplicates()
 
-#run a loop for each customer_asset_identifer
-for prod in event_list:
+
+i=0
+while i<len(events):
+ df_events=events.loc[i:i+20000]
+ event_list=df_events['customer_asset_identifier'].drop_duplicates()
+ #create new df with columns as same as events
+ new_df=panda.DataFrame(columns=events.columns)
+
+ #run a loop for each customer_asset_identifer
+ for prod in event_list:
         #get all events that happened for a particular prod
         prod=events[(events['customer_asset_identifier']==prod)]
         #get all the dates for that prod
@@ -83,29 +104,17 @@ for prod in event_list:
                   #get row data of that code
                   x_codes=code_prod[(code_prod['code_id']==un_codes[c])]
                   #count the times it occured that day
-                  val=(x_codes.size/8)+1
+                  val=(x_codes.size/7)
                   #assign that value to row entry's value
                   x_codes.iat[0,4]=val
                   #append this into new df
                   new_df=new_df.append(x_codes.iloc[0])
-
-                   
-print 'Created new DataFrame.. ready to push into DB..'
-#alter this to fit the info in df to match the columns in table
-df = panda.DataFrame({
-    'ekryp_customer_id':1,
-    'customer_asset_identifier': new_df['customer_asset_identifier'],
-    'asset_serial_number':new_df['serial_number'],
-    'date': new_df['date'],
-    'code_id': new_df['code_id'], 
-    'value': new_df['value']
-})
-
-#table you want to populate
-asset_error_codes='asset_error_codes'
-
-sqlEngine, sqlMeta = getSQlEngine()
-tableSchema= getTableSchema(tablename,sqlMeta)
-pushToSQL(tableSchema,df,'asset_error_codes',sqlEngine,sqlMeta)
-
+ print 'created new df for ',i,' rows successfully'
+ df=createDF(new_df)  
+ sqlEngine, sqlMeta = getSQlEngine()
+ tableSchema= getTableSchema(asset_error_codes,sqlMeta)
+ pushToSQL(tableSchema,df,asset_error_codes,sqlEngine,sqlMeta)
+ i+=20000
+ print 'pushing ',i,' rows..'
+   
 print 'All done'
