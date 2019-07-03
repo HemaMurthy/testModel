@@ -1,78 +1,62 @@
 
-
-# -*- coding: utf-8 -*-
-#!/usr/bin/env python
-
-import pandas as panda
+# This Python file uses the following encoding: utf-8
 import numpy as np
-import sys
-import os
+import pandas as pd
+from datetime import date
 from datetime import datetime, timedelta
 import time
-import asset_report
-import math
-                
+import sys
+import os
+#TODO: Break down the fact creating function into more functional and modular functions
 
-def build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, productError, listOfCombinations, firmware_history):
+def build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, productError, listOfCombinations, assestFeatures, firmwareHistory):
     try:
-        
-        notes['date'] = panda.to_datetime(notes['date']).dt.date
-        notes.set_index(['customer_asset_identifier', 'date'], drop=True, inplace=True)
-        
-        #get daily_work for that particular product_id
-        notes_in_prod = notes.xs(product_id, level='customer_asset_identifier').working_unit
-        
-        #remove duplicate work entries from the list
-        notes_in_prod = notes_in_prod[~notes_in_prod.index.duplicated(keep='last')] 
-        
-        #chooses the first install date available, without value[0] it will return a tuple
+        notes_in_prod = notes.xs(product_id,level='customer_asset_identifier').working_unit
+        notes_in_prod = notes_in_prod[~notes_in_prod.index.duplicated(keep='last')]
         prod_install_date = products.installed_date[products.customer_asset_identifier == product_id].values[0]
 
-        #collects and sorts (in ascending) the date and firmware version of product
-        firmwareHistoryFiltered = firmware_history[firmware_history.customer_asset_identifier == product_id][['firmware_version_id', 'created_date']]
-        firmwareHistoryFiltered.created_date = panda.to_datetime(firmwareHistoryFiltered.created_date)
+        firmwareHistoryFiltered = firmwareHistory[firmwareHistory.customer_asset_identifier == product_id][['firmware_version_id', 'created_date']]
+        firmwareHistoryFiltered.created_date = pd.to_datetime(firmwareHistoryFiltered.created_date)
         firmwareHistoryFiltered.sort_values(['created_date'], inplace = True)
-        firmwareHistoryFiltered['created_date'] = panda.to_datetime(firmware_history.created_date).dt.date
-        
-        #firmwareHistoryFiltered columns=['created_date','firmware_version_id']
+        firmwareHistoryFiltered['created_date'] = pd.to_datetime(firmwareHistory.created_date).dt.date
         firmwareHistoryFiltered.set_index('created_date', drop=True, inplace=True)
-        
-        #Removing duplicates and keeping the last firmware that was installed for that date
+        # Removing duplicates and keeping the last firmware that was installed for that date
         firmwareHistoryFiltered = firmwareHistoryFiltered[~firmwareHistoryFiltered.index.duplicated(keep='last')]
-        
-        #productError is condition_events info
+
         errorCodes = productError[productError['customer_asset_identifier'] == product_id].copy()
-        errorCodes.date = panda.to_datetime(errorCodes['date']).dt.date
+        errorCodes.date = pd.to_datetime(errorCodes['date']).dt.date
 
         # define start date based on the install date
-        start_date = max(notes_in_prod.index.min().date(),prod_install_date)
+        start_date = max(notes_in_prod.index.min().date(),
+                     prod_install_date)
 
         # define end date to be the max_date until when the data is available
-        end_date = max_Date #max_Date is todays date!
-        
-        #should be zero ideally
+        end_date = max_Date
         days_since_install = (start_date - prod_install_date).days
 
         # Reindex to fill in for missing Dates
-        notes_in_prod = notes_in_prod.reindex(panda.date_range(start_date, end_date), fill_value=0)
+        notes_in_prod = notes_in_prod.reindex(pd.date_range(start_date, end_date), fill_value=0)
 
         #Array for cummulative sum between 2 PM Dates
         valCummSumNotes = notes_in_prod.copy()
 
         #Notes in last 30 Days
-        notes_in_prod_last30 =  notes_in_prod.rolling(min_periods=0,window=30,center=False).sum()
+        notes_in_prod_last30 = 	notes_in_prod.rolling(min_periods=0,window=30,center=False).sum()
 
         # UPDATE notes_in
         notes_in_prod = notes_in_prod.cumsum()  # create notes_in values as cumulative sum
 
         # Calculating the firmware version for each day. The backfill at the end is to handle the null if firmware history record is of a later date
-        firmwareHistoryFiltered = firmwareHistoryFiltered.reindex(panda.date_range(start_date, end_date), method = 'ffill').bfill()
+        firmwareHistoryFiltered = firmwareHistoryFiltered.reindex(pd.date_range(start_date, end_date), method = 'ffill').bfill()
         # UPDATE Preventive Maintenance values
-        pm_dates = sr.service_request_date[(sr.asset_id == product_id) &
-                                   (sr.Incident_Category == 'Preventative Maintenance') &
+        pm_dates = sr.service_request_date[(sr.customer_asset_identifier == product_id) &
+                                   (sr.incident_category == 'Preventative Maintenance') &
                                    #(sr.service_request_date >= start_date) &
-                                   (sr.incident_date >= prod_install_date) &
-                                   (sr.incident_date <= end_date)]
+                                   (sr.service_request_date >= prod_install_date) &
+                                   (sr.service_request_date <= end_date)]
+
+
+
         vals = np.zeros((notes_in_prod.shape[0], 3))
         #Array for days to failure
         failureVals = np.full((notes_in_prod.shape[0], 1), 180)
@@ -96,11 +80,11 @@ def build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, pro
 
         # Updating failure Event Maintenance values
         incidenceNotInterest = ['Preventative Maintenance', 'Log Collection/Configuration', 'Installation/Integration', 'Cleaning Supplies', 'Misrouted Call',  'Welcome Call', 'Serial Number Wrong']
-        sr_dates = sr.service_request_date[(sr.asset_id == product_id) &
-                                       (~sr.incident_Category.isin(incidenceNotInterest)) &
-                                       (~sr.incident_Category.isnull()) &
-                                       (sr.incident_date >= prod_install_date) &
-                                       (sr.incident_date <= end_date)]
+        sr_dates = sr.service_request_date[(sr.customer_asset_identifier == product_id) &
+                                       (~sr.incident_category.isin(incidenceNotInterest)) &
+                                       (~sr.incident_category.isnull()) &
+                                       (sr.service_request_date >= prod_install_date) &
+                                       (sr.service_request_date <= end_date)]
 
         #Days since Failure
         daysSinceFailure = np.zeros((notes_in_prod.shape[0], 1))
@@ -126,7 +110,8 @@ def build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, pro
 
         vals[seq_start_idx:, 2] = [numServiceRequest] * (len(vals) - seq_start_idx)
         daysSinceFailure[seq_start_idx: len(vals), 0] = range(iniBias, len(vals) - seq_start_idx + iniBias)
-        prod_df = panda.DataFrame(data={'customer_asset_identifier': product_id,
+
+        prod_df = pd.DataFrame(data={'customer_asset_identifier': product_id,
                                  'notes_in': notes_in_prod,
                                  'notes_in_last30': notes_in_prod_last30,
                                  'notes_in_last_pm': valCummSumNotes,
@@ -144,26 +129,29 @@ def build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, pro
         # Starting with the error code count
         for codeType in listOfCombinations['codeType']:
             for severity in listOfCombinations['codeSeverity']:
-                errorCodesCategory = errorCodes[(errorCodes.event_code_type_id == codeType) & (errorCodes.event_code_criticality == severity)].groupby('event_date').count()
-                errorCodeCount = errorCodesCategory.reindex(panda.date_range(start_date, end_date), fill_value=0)
-                errorCodeStd = errorCodeCount['event_code_type_id'].rolling(window=30,center=False).std()
+                errorCodesCategory = errorCodes[(errorCodes.code_type == codeType) & (errorCodes.criticality == severity)].groupby('date').count()
+                #errorCodesCategory = errorCodes[(errorCodes.event_code_type_id == codeType) & (errorCodes.event_code_criticality == severity) & (errorCodes.event_code_value not in listOfCombinations['highSeverityCodes'])].groupby('event_date').count()
+		#errorCodesCategory=erroCodesCategory[(errorCodes.event_code_value not in listOfCombinations['highSeverityCodes'])]
+		errorCodeCount = errorCodesCategory.reindex(pd.date_range(start_date, end_date), fill_value=0)
+                errorCodeStd = errorCodeCount['code_type'].rolling(window=30,center=False).std()
                 errorCodeCount = errorCodeCount.cumsum()
-                last30DayErrorCount = errorCodeCount.event_code_type_id.subtract(errorCodeCount.event_code_type_id.shift(30), fill_value = 0)
+                last30DayErrorCount = errorCodeCount.code_type.subtract(errorCodeCount.code_type.shift(30), fill_value = 0)
                 prod_df['CodeType_'+str(int(codeType)) + '_criticality_'+str(int(severity))] = last30DayErrorCount
                 prod_df['CodeType_'+str(int(codeType)) + '_criticality_'+str(int(severity)) + '_std'] = errorCodeStd
 
         #Now for the high error issues:
         for errorCode in listOfCombinations['highSeverityCodes']:
-            errorCodesCategory = errorCodes[(errorCodes.event_code_value == errorCode)].groupby('event_date').count()
-            errorCodeCount = errorCodesCategory.reindex(panda.date_range(start_date, end_date), fill_value=0)
-            errorCodeStd = errorCodeCount['event_code_type_id'].rolling(window=30,center=False).std()
+            errorCodesCategory = errorCodes[(errorCodes.code_id == errorCode)].groupby('date').count()
+            errorCodeCount = errorCodesCategory.reindex(pd.date_range(start_date, end_date), fill_value=0)
+            errorCodeStd = errorCodeCount['code_type'].rolling(window=30,center=False).std()
             errorCodeCount = errorCodeCount.cumsum()
-            last30DayErrorCount = errorCodeCount.event_code_type_id.subtract(errorCodeCount.event_code_type_id.shift(30), fill_value = 0)
+            last30DayErrorCount = errorCodeCount.code_type.subtract(errorCodeCount.code_type.shift(30), fill_value = 0)
             prod_df['Code_'+str(int(errorCode))] = last30DayErrorCount
             prod_df['Code_'+str(int(errorCode)) + '_std'] = errorCodeStd
 
         #Fetching the device information
-        deviceFeature = products[products.asset_id == product_id][['model_name', 'model_group_id', 'model_group_name', 'category_id', 'category_name', 'type_id', 'type_name', 'capacity', 'security_type']]
+        deviceId = products.product_identifier[products.customer_asset_identifier == product_id].values[0]
+        deviceFeature = assestFeatures[assestFeatures.product_identifier == deviceId][['model_name', 'model_group_id', 'model_group_name', 'category_id', 'category_name', 'type_id', 'type_name', 'capacity', 'security_type']]
 
         for column in deviceFeature.columns:
             prod_df[column] = deviceFeature[column].values[0]
@@ -171,7 +159,8 @@ def build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, pro
         prod_dfs.append(prod_df[:])
     except Exception as e:
         print 'There was an error while processing for product id', product_id, e.message
-        raise
+        
+
 
 def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=100):
     """
@@ -195,22 +184,69 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
         sys.stdout.write('\n')
     sys.stdout.flush()
 
-def read_from_csv_files():
-   try:
-        data_dir='/home/hema_murthy/testModel/testDataSource'
-        notes=panda.read_csv(os.path.join(data_dir,'asset_daily_work.csv'))
-        products=panda.read_csv(os.path.join(data_dir,'asset_ib_info.csv'))
-        products.installed_date=panda.to_datetime(products.installed_date).dt.date
-        product_status=products['active_status']
-        product_status.append(products['customer_asset_identifier'])
-        life_events=panda.read_csv(os.path.join(data_dir,'asset_life_event.csv'))
-        asset_features= panda.read_csv(os.path.join(data_dir,'asset_features.csv'))
-        errors=panda.read_csv(os.path.join(data_dir,'asset_conditions_events.csv')) #contains error code info
-        firmware_history=panda.read_csv(os.path.join(data_dir,'firmware_history.csv'))
-        firmware_history = firmware_history[(~firmware_history['created_date'].isnull())]
-        firmware_history = firmware_history[(~firmware_history['created_date'].str.contains('0000-00-00 00:00:00'))]
-        service_record=panda.read_csv(os.path.join(data_dir,'service_request_record.csv'))
-        return products,notes,product_status,asset_features,errors,firmware_history,life_events,service_record
-   except Exception as e:
-        print 'Error in reading data from csv file', e.message
-        raise
+if __name__ == "__main__":
+    DATADIR = '/home/hema_murthy/testModel/TestDataSource'
+    # READ DATA INPUT FROM CSV FILES
+    # Reading the assest daily work to get the note summary data
+    notes = pd.read_csv(os.path.join(DATADIR, 'asset_daily_work.csv'))
+    notes['date'] = pd.to_datetime(notes['date']).dt.date
+    notes.set_index(['customer_asset_identifier', 'date'], drop=True, inplace=True)
+    #notes.columns=['id', 'ekryp_partner_id', 'customer_asset_identifier', 'date','working_unit', 'cum_work_unit', 'created_at', 'updated_at']
+    # Reading the product description table
+    products = pd.read_csv(os.path.join(DATADIR,'asset_ib_info.csv'))
+    products.installed_date = pd.to_datetime(products.installed_date).dt.date
+
+    # Reading the service logs. This helps us in figuring out the days to failure and last Preventive Maintenance date
+    sr = pd.read_csv(os.path.join(DATADIR,'service_request_record.csv'))
+    sr.service_request_date = pd.to_datetime(sr.service_request_date).dt.date
+    # List of product ids that have the following conditions satisfied
+    '''
+     a. The Install Date is after 2010
+     b. Data is present for atleast 60 days
+     c. Log Status remains 1 throught the product's life
+    '''
+    productStatus = pd.read_csv(os.path.join('/home/hema_murthy/testModel/valid_assets.csv'), header=None)
+    productStatus.columns = ['id']
+
+    productError = pd.read_csv(os.path.join(DATADIR,'asset_conditions_events.csv')).dropna()
+
+    # Reading the device description table
+    assestFeatures = pd.read_csv(os.path.join(DATADIR,'asset_features.csv'))
+
+    # Reading the firmware history table
+    firmwareHistory = pd.read_csv(os.path.join(DATADIR,'firmware_history.csv'))
+    # Removing rows for which we have no information for the created date column
+    firmwareHistory = firmwareHistory[(~firmwareHistory['created_date'].isnull())]
+    firmwareHistory = firmwareHistory[(~firmwareHistory['created_date'].str.contains('0000-00-00 00:00:00'))]
+
+    #Considering all the products that have 90 days of data
+    lastDate = datetime.now() - timedelta(days=90)
+    #productStatus['Install Date'] = pd.to_datetime(productStatus['Install Date']).dt.date
+
+    #Filter out the products newer than last date. We will only consider these products
+    #productIdFiltered = productStatus[productStatus['Install Date'] < lastDate.date()]
+    max_Date = datetime.now().date()
+
+    #Caculating the different Categories of error codes
+    #Hardcoding the stuff rightnow as we don't have a lot of these with data
+    combinations = {
+    'codeType': [1.0],
+    'codeSeverity': [1.0, 2.0, 3.0],
+    'highSeverityCodes': [160, 177,  12,  74,  64, 182, 307 ,306 ,310 ,305 ,312]
+    }
+
+    # The list to store the DF for each of the product
+    prod_dfs = []
+    for i, product_id in enumerate(productStatus['id']):
+        print_progress(i, len(productStatus['id']))
+        try:
+            build_facts_product(product_id, notes, products, sr, prod_dfs, max_Date, productError, combinations, assestFeatures, firmwareHistory)
+        except:
+            print 'Skipping fact creation product_id', product_id
+            raise
+        time.sleep(0.001)
+    complete_data = pd.concat(prod_dfs)
+    complete_data.index.name = 'date'
+    complete_data.set_index(['customer_asset_identifier'], append=True, drop=True, inplace=True)
+    complete_data.sort_index(inplace=True)
+    complete_data.to_csv('newFacts-Data.csv', index=True, index_label=['date', 'customer_asset_identifier'])
