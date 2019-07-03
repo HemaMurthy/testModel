@@ -1,0 +1,33 @@
+#technician_history 
+
+select
+i.ekryp_partner_id,s.customer_asset_identifier, i.serial_number,
+ s.service_order_created_on,s.service_provider, 
+ t.field_technician_id, t.field_technician, t.date_arrival
+from  ekryp_data_db_prod.asset_ib_info as i
+inner join ekryp_data_db_prod.service_order_record as s
+ on s.customer_asset_identifier = i.customer_asset_identifier
+inner join ekryp_data_db_prod.field_service_ops_activity_record as t 
+on t.field_service_order_id=s.id
+
+#service_request_history 
+select
+ekryp_partner_id,customer_asset_identifier, serial_number,
+service_request_date,incident_category, status, priority
+from  ekryp_data_db_prod.service_request_record
+
+#periodic_work_processed 
+#[NOTE! this table requires two more columns that'll come from the UI 
+select
+i.ekryp_partner_id,i.customer_asset_identifier,i.serial_number,
+w.date, w.working_unit
+from  ekryp_data_db_prod.asset_ib_info as i
+inner join ekryp_data_db_prod.asset_daily_work as w 
+ on w.customer_asset_identifier = i.customer_asset_identifier;
+
+#asset_error_codes
+select
+ekryp_partner_id,customer_asset_identifier,serial_number,date,
+code_id
+from  ekryp_data_db_prod.asset_conditions_events 
+
