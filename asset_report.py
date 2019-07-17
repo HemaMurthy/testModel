@@ -26,6 +26,8 @@ def getFromSQL():
 
         work=panda.read_sql("select customer_asset_identifier,date,work_units from ml_reference.periodic_work_processed", con= conn)
         print 'Successful read from Database.'
+        
+        #conn.close()
         return work, products, life_events
     except Exception as e:
         print 'Error in reading data from Database', e.message
@@ -159,8 +161,9 @@ print life_events.loc[life_events.customer_asset_identifier==random_prod]
 print 'creating error_log csv file'
 prods=products.customer_asset_identifier
 df=panda.DataFrame(error_log)
-df.to_csv('error_log'+str(datetime.now().date())+'.csv',index=False)
 
+#I have it here, just to test my program, but can exclude creating csv's here
+#df.to_csv('error_log'+str(datetime.now().date())+'.csv',index=False)
 
 error_log_list=error_log['customer_asset_identifier']
 
@@ -169,9 +172,10 @@ print '\nAssets in error_log: ',len(error_log_list)
 print 'assessing valid products'
 valid_list=list(set(prods)-set(error_log_list)) #difference
 valid=panda.DataFrame(valid_list).drop_duplicates()
-report.write_into_report('\nAssets passing all filters: ',len(valid))
+print '\nAssets passing all filters: ',len(valid)
 
-valid.to_csv('valid_assets'+str(datetime.now().date())+'.csv',index=False)  #do we need to include ekryp customer_id here too?
+#I have it here, just to test my program, but can exclude creating csv's here
+#valid.to_csv('valid_assets'+str(datetime.now().date())+'.csv',index=False)  #do we need to include ekryp customer_id here too?
 
 print '\n\nReason Code\tDescription\n1\tNot active now\n2\tLog status manual\n3\tLog status Daily but no data for the last 15 days\n4\tDon’t have last 60 days  of daily note\n5\tInstall date in the future\n\n\t\t\t---END OF REPORT---' #we're fixing these conditions for now
 print 'All done!'
