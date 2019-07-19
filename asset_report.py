@@ -120,7 +120,7 @@ no60_work=[]
 work_60=[]
 for product in avail_work:
     asset_work=work[(work.customer_asset_identifier==product)]
-    if( len(asset_work)>60 and asset_work.isna()==False):
+    if( len(asset_work)>60 ):
             work_60.append(product)
     else:
             no60_work.append(product)
