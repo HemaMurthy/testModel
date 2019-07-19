@@ -26,8 +26,6 @@ def getFromSQL():
 
         work=panda.read_sql("select customer_asset_identifier,date,work_units from ml_reference.periodic_work_processed", con= conn)
         print 'Successful read from Database.'
-        
-        #conn.close()
         return work, products, life_events
     except Exception as e:
         print 'Error in reading data from Database', e.message
@@ -48,17 +46,19 @@ print '\nDaily Work gathered from: ',min_date.date()
 print '\nLast Daily work collected on:',now.date()
 
 #assets that have work entries
-avail_work=work['customer_asset_identifier'].drop_duplicates()
+avail_work=list(work['customer_asset_identifier'].drop_duplicates())
 print '\nTotal assets with daily work: ',len(avail_work)
-         
+for p in avail_work:
+    if p==256:
+        print 'whyyyy' 
 #reason:1 active assets
-product_status=panda.DataFrame(life_events[(life_events.life_event_code=='2') & life_events['customer_asset_identifier'].isin(products.customer_asset_identifier)])
+product_status=panda.DataFrame(life_events[(life_events.life_event_code=='2') & life_events['customer_asset_identifier'].isin(avail_work)])
 #product_status.insert(1,'customer_asset_identifier',life_events['customer_asset_identifier'],True)
       
-active_assets= product_status.customer_asset_identifier[(product_status.life_event_value == 1) & life_events['customer_asset_identifier'].isin(products.customer_asset_identifier)].drop_duplicates()
+active_assets= product_status.customer_asset_identifier[(product_status.life_event_value == 1) & product_status['customer_asset_identifier'].isin(avail_work)].drop_duplicates()
 print '\nActive assets: ',len(active_assets)
 
-inactive_list=product_status.customer_asset_identifier[(product_status.life_event_value != 1)& life_events['customer_asset_identifier'].isin(products.customer_asset_identifier)].drop_duplicates()
+inactive_list=product_status.customer_asset_identifier[(product_status.life_event_value != 1)& product_status['customer_asset_identifier'].isin(avail_work)].drop_duplicates()
 error_log=panda.DataFrame(inactive_list)
 print '\nInactive assets: ',len(error_log)
 
@@ -67,8 +67,8 @@ error_log.insert(1,'reason_id',1,True)
 
 #reason:2 log status manual alone
 #life_event_
-daily_prod=panda.DataFrame(life_events.customer_asset_identifier[(life_events.life_event_code=='3') & (life_events.life_event_value==1)& life_events['customer_asset_identifier'].isin(products.customer_asset_identifier)]).drop_duplicates()
-man_prod=panda.DataFrame(life_events.customer_asset_identifier[(life_events.life_event_code=='3') & (life_events.life_event_value==2)& life_events['customer_asset_identifier'].isin(products.customer_asset_identifier)]).drop_duplicates()
+daily_prod=panda.DataFrame(life_events.customer_asset_identifier[(life_events.life_event_code=='3') & (life_events.life_event_value==1)& life_events['customer_asset_identifier'].isin(avail_work)]).drop_duplicates()
+man_prod=panda.DataFrame(life_events.customer_asset_identifier[(life_events.life_event_code=='3') & (life_events.life_event_value==2)& life_events['customer_asset_identifier'].isin(avail_work)]).drop_duplicates()
 log2_list=list(set(man_prod['customer_asset_identifier'])-set(daily_prod['customer_asset_identifier']))
 daily_alone_list=list(set(daily_prod['customer_asset_identifier'])-set(man_prod['customer_asset_identifier']))
 daily_list=list(set(daily_prod['customer_asset_identifier'])&set(man_prod['customer_asset_identifier']))
@@ -84,7 +84,7 @@ print '\nAssets with log status 1: ',len(daily_prod)
 #reason:3 log status daily but no work data for n=15 days
 perfect_work=[]
 no_work_list=[]
-for product in products.customer_asset_identifier:
+for product in avail_work:
         product_work=panda.DataFrame(work[(work.customer_asset_identifier==product)])
         dates=[]
         for x in product_work['date']:
@@ -120,7 +120,7 @@ no60_work=[]
 work_60=[]
 for product in avail_work:
     asset_work=work[(work.customer_asset_identifier==product)]
-    if( len(asset_work)>60):
+    if( len(asset_work)>60 and asset_work.isna()==False):
             work_60.append(product)
     else:
             no60_work.append(product)
@@ -159,11 +159,10 @@ print life_events.loc[life_events.customer_asset_identifier==random_prod]
 
 #write error_log into .csv file
 print 'creating error_log csv file'
-prods=products.customer_asset_identifier
+prods=avail_work
 df=panda.DataFrame(error_log)
+df.to_csv('error_log'+str(datetime.now().date())+'.csv',index=False)
 
-#I have it here, just to test my program, but can exclude creating csv's here
-#df.to_csv('error_log'+str(datetime.now().date())+'.csv',index=False)
 
 error_log_list=error_log['customer_asset_identifier']
 
@@ -172,10 +171,9 @@ print '\nAssets in error_log: ',len(error_log_list)
 print 'assessing valid products'
 valid_list=list(set(prods)-set(error_log_list)) #difference
 valid=panda.DataFrame(valid_list).drop_duplicates()
-print '\nAssets passing all filters: ',len(valid)
+report.write_into_report('\nAssets passing all filters: ',len(valid))
 
-#I have it here, just to test my program, but can exclude creating csv's here
-#valid.to_csv('valid_assets'+str(datetime.now().date())+'.csv',index=False)  #do we need to include ekryp customer_id here too?
+valid.to_csv('valid_assets'+str(datetime.now().date())+'.csv',index=False)  #do we need to include ekryp customer_id here too?
 
 print '\n\nReason Code\tDescription\n1\tNot active now\n2\tLog status manual\n3\tLog status Daily but no data for the last 15 days\n4\tDon’t have last 60 days  of daily note\n5\tInstall date in the future\n\n\t\t\t---END OF REPORT---' #we're fixing these conditions for now
 print 'All done!'
