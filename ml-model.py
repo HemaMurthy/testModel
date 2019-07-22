@@ -68,8 +68,8 @@ def generatePrecisionCurve(rpt_data, date, failure_event_col,mdlName, mdlVersion
         plt.ylabel('Precision')
         plt.title(title,fontweight='bold')
         plt.legend(loc='upper right')
-        plt.savefig('m4__precision_Curve.png')
-
+        plt.savefig('precision_Curve'+str(date)+'.png')
+#might want to save the precision curve to ml-reference
     
 '''
 Functions for generating the ROC curves
@@ -140,7 +140,8 @@ def generateROC(rpt_data, date, failure_event_col, mdlName,mdlVersion):
         plt.ylabel('# Failures')
         plt.title(title,fontweight='bold')
         plt.legend(loc='lower right')
-        plt.savefig('m4__ROC_Curve.png')
+        plt.savefig('ROC_Curve'+str(date)+'.png')
+#might want to save the ROC curve to ml-reference
 
 
 def test_train_split(df, trainMaxDate, testMaxDate):
@@ -186,15 +187,20 @@ def evaluateModel(true_y, pred_y):
     }
     return retObj
 
+
+#you can use any past dates here, my suggestion is atleas 90 days before today. 
 MODELTRAINDATE='2019-01-26'
 
 trainMaxDate = datetime.strptime(MODELTRAINDATE.strip('"'), '%Y-%m-%d').date()
 testMaxDate = datetime.strptime(MODELTRAINDATE.strip('"'), '%Y-%m-%d') + timedelta(30)
-minDate = '2015-01-01'
-data = pd.read_csv('m4Facts-Data.csv')
+minDate = '2015-01-01'  #You could alter this to the first work date 
+
+#map the path to your Feature table
+data = pd.read_csv('newFacts-Data.csv')
 data.date = pd.to_datetime(data.date)
 dataReduced = data.drop([u'model_group_name', u'category_name', u'type_name'], 1)
 
+#map the SecurityTable and ModelTable (which will come from the UI eventually)
 securityTypeMap = pd.read_csv('/home/hema_murthy/testModel/TestDataSource/SecurityTableEkryp.csv')
 modelNameMap = pd.read_csv('/home/hema_murthy/testModel/TestDataSource/ModelTableEkryp.csv')
 #One hot encoding
@@ -228,12 +234,12 @@ for mdlName, mdl in classificationModels:
     mdl.eKrypVersion = mdlVersion
     mdl.trainDate = str(datetime.now().date())
 
-    joblib.dump(mdl, mdlName + '_m4_' + str(trainMaxDate) + '.pkl', compress =1)
+    joblib.dump(mdl, mdlName + str(trainMaxDate) + '.pkl', compress =1)
     modelNames.append(mdlName)
     results.append(mdlResult)
 
 #We need to send these results automatically to Jay, Ramki and Steve for verification
 re = pd.DataFrame(results)
 re['Modelname'] = pd.Series(modelNames)
-re.to_csv('ModelTrainingResults_m4'+ str(trainMaxDate)+'.csv', index = False)
-
+re.to_csv('ModelTrainingResults'+ str(trainMaxDate)+'.csv', index = False)
+#need to push the results into ml-refernce schema too
