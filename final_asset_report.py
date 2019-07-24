@@ -6,7 +6,7 @@ import sys
 import pandas as panda
 import numpy as np
 import feature_helper
-import report
+
 import datetime as dt
 from datetime import datetime,timedelta
 import random
@@ -14,10 +14,9 @@ import random
 #fetching data from csv files
 products,notes,product_status,asset_features,condition_events,firmware_history,life_events,service_record = feature_helper.read_from_csv_files()
 
-report.create_report()
-report.write_into_report('\nTotal assets: ',len(products))
+print('\nTotal assets: ',len(products))
 avail_notes=notes['customer_asset_identifier'].drop_duplicates()
-report.write_into_report('\nTotal assets with daily work: ',len(avail_notes))
+print('\nTotal assets with daily work: ',len(avail_notes))
 dates=[]
 for x in notes['date']:
         dates.append(datetime.strptime(x,'%Y-%m-%d'))
@@ -25,17 +24,17 @@ dates.pop(0)
 min_date=min(dates)
 max_date=max(dates)
 now = dt.datetime.now()
-report.write_into_report('\nReport date: ',now)
-report.write_into_report('\n\nDaily Work gathered from: ',min_date.date())
-report.write_into_report('\nLast Daily work collected on:',now.date())
+print('\nReport date: ',now)
+print('\n\nDaily Work gathered from: ',min_date.date())
+print('\nLast Daily work collected on:',now.date())
          
 #reason:1 active assets
 active_assets= products.customer_asset_identifier[(products.active_status == 'Active')]
-report.write_into_report('\n\nActive assets: ',len(active_assets))
+print('\n\nActive assets: ',len(active_assets))
 
 inactive_list=products.customer_asset_identifier[(products.active_status != 'Active')]
 error_log=panda.DataFrame(inactive_list)
-report.write_into_report('\nInactive assets: ',len(error_log))
+print('\nInactive assets: ',len(error_log))
 
 #storing error'ed assets into error_log.csv
 error_log.insert(1,'reason_id',1,True)
@@ -51,9 +50,9 @@ manual_df.columns=['customer_asset_identifier']
 manual_df.insert(1,'reason_id',2,True)
 error_log=error_log.append(manual_df)
 
-report.write_into_report('\n\nAssets with only log status 1, ie, only daily entries: ',len(daily_alone_list))
-report.write_into_report('\nAssets with only log status 2, ie, only Manual entries: ',len(log2_list))
-report.write_into_report('\nAssets with log status 1: ',len(daily_prod))
+print('\n\nAssets with only log status 1, ie, only daily entries: ',len(daily_alone_list))
+print('\nAssets with only log status 2, ie, only Manual entries: ',len(log2_list))
+print('\nAssets with log status 1: ',len(daily_prod))
 
 #reason:3 log status daily but no notes data for n=15 days
 perfect_notes=[]
@@ -81,9 +80,9 @@ for product in products.customer_asset_identifier:
                 no_notes_list.append(product)
         else:
                 perfect_notes.append(product)
-report.write_into_report('\n\nAssets with missing work entries for more than 15 days: ',len(no_notes_list))
-report.write_into_report('\nAssets with Perfect work entries: ',len(perfect_notes))
-report.write_me('\n[*Perfect work meaning no gap in daily work entries for more than 15 days]')
+print('\n\nAssets with missing work entries for more than 15 days: ',len(no_notes_list))
+print('\nAssets with Perfect work entries: ',len(perfect_notes))
+print('\n[*Perfect work meaning no gap in daily work entries for more than 15 days]')
 no_notes=panda.DataFrame(no_notes_list)
 no_notes.columns=['customer_asset_identifier']
 no_notes.insert(1,'reason_id',3,True)
@@ -98,8 +97,8 @@ for product in avail_notes:
             notes_60.append(product)
           else:
             no60_notes.append(product)
-report.write_into_report('\n\nAssets with work entries for atleast 60 days: ',len(notes_60))
-report.write_into_report('\nAssets without work entries for atleast 60 days: ',len(no60_notes))
+print('\n\nAssets with work entries for atleast 60 days: ',len(notes_60))
+print('\nAssets without work entries for atleast 60 days: ',len(no60_notes))
 no60_notes_list=panda.DataFrame(no60_notes)
 no60_notes_list.columns=['customer_asset_identifier']
 no60_notes_list.insert(1,'reason_id',4,True)
@@ -120,17 +119,17 @@ print '..Completed processing all filters..'
 print '..Validating with a random number..'
 random_prod=random.choice(products.customer_asset_identifier)
 print 'using random customer_asset_identifier number: ',random_prod
-report.write_into_report('\n\nRandom Product id: ',random_prod)
+print('\n\nRandom Product id: ',random_prod)
 at_focus=error_log.loc[error_log['customer_asset_identifier']==random_prod]
 if at_focus.empty:
-        report.write_me('\nProduct chosen for feature engineering!')
+        print('\nProduct chosen for feature engineering!')
 else:
-        report.write_me('\nProduct found in error log!\nError log: \n')
-        report.write_me(error_log.loc[error_log['customer_asset_identifier']==random_prod])
-report.write_me('\nRandom Product Information:')
-report.write_me(products.loc[products.customer_asset_identifier==random_prod])
-report.write_me('\n\nRandom Product Life Events:')
-report.write_me(life_events.loc[life_events.customer_asset_identifier==random_prod])
+        print('\nProduct found in error log!\nError log: \n')
+        print(error_log.loc[error_log['customer_asset_identifier']==random_prod])
+print('\nRandom Product Information:')
+print(products.loc[products.customer_asset_identifier==random_prod])
+print('\n\nRandom Product Life Events:')
+print(life_events.loc[life_events.customer_asset_identifier==random_prod])
 
 #write error_log into .csv file
 print 'creating error_log csv file'
@@ -147,11 +146,11 @@ report.write_into_report('\n\nAssets in error_log: ',len(error_log_list))
 print 'assessing valid products'
 valid_list=list(set(prods)-set(error_log_list)) #difference
 valid=panda.DataFrame(valid_list).drop_duplicates()
-report.write_into_report('\nAssets passing all filters: ',len(valid))
+print('\nAssets passing all filters: ',len(valid))
 
 valid.to_csv('valid_assets.csv',index=False)
 
-report.write_me('\n\nReason Code\tDescription\n1\tNot active now\n2\tLog status manual\n3\tLog status Daily but no data for the last 15 days\n4\tDon’t have last 60 days  of daily note\n5\tInstall date in the future\n\n\t\t\t---END OF REPORT---')
+print('\n\nReason Code\tDescription\n1\tNot active now\n2\tLog status manual\n3\tLog status Daily but no data for the last 15 days\n4\tDon’t have last 60 days  of daily note\n5\tInstall date in the future\n\n\t\t\t---END OF REPORT---')
 
 print 'All done!'
 
