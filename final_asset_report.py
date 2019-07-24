@@ -29,10 +29,10 @@ print('\n\nDaily Work gathered from: ',min_date.date())
 print('\nLast Daily work collected on:',now.date())
          
 #reason:1 active assets
-active_assets= products.customer_asset_identifier[(products.active_status == 'Active')]
+active_assets= products.customer_asset_identifier[(products.active_status == 'Active')& products['customer_asset_identifier'].isin(avail_work)]
 print('\n\nActive assets: ',len(active_assets))
 
-inactive_list=products.customer_asset_identifier[(products.active_status != 'Active')]
+inactive_list=products.customer_asset_identifier[(products.active_status != 'Active')& products['customer_asset_identifier'].isin(avail_work)]
 error_log=panda.DataFrame(inactive_list)
 print('\nInactive assets: ',len(error_log))
 
@@ -40,8 +40,8 @@ print('\nInactive assets: ',len(error_log))
 error_log.insert(1,'reason_id',1,True)
 
 #reason:2 log status manual alone
-daily_prod=panda.DataFrame(life_events[(life_events.life_event_code==3) & (life_events.life_event_value==1)]).drop_duplicates()
-man_prod=panda.DataFrame(life_events.customer_asset_identifier[(life_events.life_event_code==3) & (life_events.life_event_value==2)]).drop_duplicates()
+daily_prod=panda.DataFrame(life_events[(life_events.life_event_code==3) & (life_events.life_event_value==1)& life_events['customer_asset_identifier'].isin(avail_work)]).drop_duplicates()
+man_prod=panda.DataFrame(life_events.customer_asset_identifier[(life_events.life_event_code==3) & (life_events.life_event_value==2)& life_events['customer_asset_identifier'].isin(avail_work)]).drop_duplicates()
 log2_list=list(set(man_prod['customer_asset_identifier'])-set(daily_prod['customer_asset_identifier']))
 daily_alone_list=list(set(daily_prod['customer_asset_identifier'])-set(man_prod['customer_asset_identifier']))
 daily_list=list(set(daily_prod['customer_asset_identifier'])&set(man_prod['customer_asset_identifier']))
@@ -57,7 +57,7 @@ print('\nAssets with log status 1: ',len(daily_prod))
 #reason:3 log status daily but no notes data for n=15 days
 perfect_notes=[]
 no_notes_list=[]
-for product in products.customer_asset_identifier:
+for product in avail_notes:
         product_work=panda.DataFrame(notes[(notes.customer_asset_identifier==product)])
         dates=[]
         for x in product_work['date']:
@@ -107,8 +107,8 @@ error_log=error_log.append(no60_notes_list)
 
 #reason: 5 insatll date in the future
 products.installed_date = panda.to_datetime(products.installed_date).dt.date
-install_date_error_list=products.customer_asset_identifier[products.installed_date>now.date()]
-report.write_into_report('\n\nAssets with install dates in the future: ',len(install_date_error_list))
+install_date_error_list=products.customer_asset_identifier[products.installed_date>now.date()& products['customer_asset_identifier'].isin(avail_work)]
+print('\n\nAssets with install dates in the future: ',len(install_date_error_list))
 install_date_error=panda.DataFrame(install_date_error_list)
 install_date_error.columns=['customer_asset_identifier']
 install_date_error.insert(1,'reason_id',5,True)
